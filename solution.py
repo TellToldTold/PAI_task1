@@ -6,7 +6,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from sklearn.cluster import KMeans
-
+from sklearn.mixture import GaussianMixture
 
 # Set `EXTENDED_EVALUATION` to `True` in order to visualize your predictions.
 EXTENDED_EVALUATION = False
@@ -15,7 +15,9 @@ EVALUATION_GRID_POINTS = 300  # Number of grid points used in extended evaluatio
 # Cost function constants
 COST_W_UNDERPREDICT = 50.0
 COST_W_NORMAL = 1.0
-NUM_CLUSTERS = 32
+
+NUM_CLUSTERS = 100
+PROB_THRESHOLD = 0.1
 
 class Model(object):
     """
@@ -43,7 +45,8 @@ class Model(object):
             containing your predictions, the GP posterior mean, and the GP posterior stddev (in that order)
         """
 
-        test_cluster_labels = self.kmeans.predict(test_coordinates)
+        #test_cluster_labels = self.kmeans.predict(test_coordinates)
+        test_probs = self.gmm.predict_proba(test_coordinates)
 
         # TODO: Use your GP to estimate the posterior mean and stddev for each city_area here
         gp_mean = np.zeros(test_coordinates.shape[0], dtype=float)
@@ -51,26 +54,64 @@ class Model(object):
         # TODO: Use the GP posterior to form your predictions here
         predictions = np.zeros(test_coordinates.shape[0], dtype=float)
 
-        for cluster_id in range(NUM_CLUSTERS):
-            # Indices of test points in this cluster
-            cluster_indices = np.where(test_cluster_labels == cluster_id)[0]
-            cluster_X = test_coordinates[cluster_indices]
+        # for cluster_id in range(NUM_CLUSTERS):
+        #     # Indices of test points in this cluster
+        #     cluster_indices = np.where(test_cluster_labels == cluster_id)[0]
+        #     cluster_X = test_coordinates[cluster_indices]
 
-            if len(cluster_X) == 0:
-                continue  # Skip if no test points in this cluster
+        #     if len(cluster_X) == 0:
+        #         continue  # Skip if no test points in this cluster
 
-            # Retrieve the trained GP model
-            gp = self.local_gps[cluster_id]
+        #     # Retrieve the trained GP model
+        #     gp = self.local_gps[cluster_id]
 
-            # Make predictions
-            y_mean, y_std = gp.predict(cluster_X, return_std=True)
+        #     # Make predictions
+        #     y_mean, y_std = gp.predict(cluster_X, return_std=True)
 
-            # Store predictions
-            gp_mean[cluster_indices] = y_mean
-            gp_std[cluster_indices] = y_std
+        #     # Store predictions
+        #     gp_mean[cluster_indices] = y_mean
+        #     gp_std[cluster_indices] = y_std
+
+        for i in range(test_coordinates.shape[0]):
+            # Find clusters where the test point's probability is above the threshold
+            clusters = np.where(test_probs[i] >= PROB_THRESHOLD)[0]
+            if len(clusters) == 0:
+                # If no clusters meet the threshold, use the cluster with the highest probability
+                clusters = [np.argmax(test_probs[i])]
+
+            # Initialize lists to collect predictions from multiple GPs
+            cluster_preds = []
+            cluster_vars = []
+
+            for cluster_id in clusters:
+                gp = self.local_gps.get(cluster_id)
+                if gp is None:
+                    continue  # Skip if the GP model is not available
+
+                # Make prediction using the GP model
+                y_mean, y_std = gp.predict(test_coordinates[i].reshape(1, -1), return_std=True)
+                cluster_preds.append(y_mean[0])
+                cluster_vars.append(y_std[0] ** 2)  # Variance
+
+            if cluster_preds:
+                # Compute weighted average of predictions
+                # Optionally, you can weight by the cluster probabilities
+                weights = test_probs[i][clusters]
+                weights /= np.sum(weights)  # Normalize weights to sum to 1
+
+                # Weighted mean
+                gp_mean[i] = np.sum(weights * np.array(cluster_preds))
+                # Weighted variance
+                gp_var = np.sum(weights * np.array(cluster_vars)) + np.sum(weights * (np.array(cluster_preds) - gp_mean[i]) ** 2)
+                gp_std[i] = np.sqrt(gp_var)
+            else:
+                # Default prediction if no clusters are found (should not happen)
+                gp_mean[i] = 0.0
+                gp_std[i] = 1.0
+
 
         predictions = gp_mean.copy()
-        adjustment_factor = np.sqrt(2 * np.log(50))
+        adjustment_factor = 2.0619
         residential_indices = np.where(test_area_flags == 1)[0]
         predictions[residential_indices] = gp_mean[residential_indices] + adjustment_factor * gp_std[residential_indices]
         predictions = np.maximum(predictions, 0)
@@ -85,32 +126,44 @@ class Model(object):
         :param train_area_flags: Binary variable denoting whether the 2D training point is in the residential area (1) or not (0)
         """
 
-        kmeans = KMeans(n_clusters=NUM_CLUSTERS, random_state=0)
-        cluster_labels = kmeans.fit_predict(train_coordinates)
-        self.kmeans = kmeans
+        #kmeans = KMeans(n_clusters=NUM_CLUSTERS, random_state=0)
+        #cluster_labels = kmeans.fit_predict(train_coordinates)
+        #self.kmeans = kmeans
+
+        gmm = GaussianMixture(n_components=NUM_CLUSTERS, random_state=0)
+        gmm.fit(train_coordinates)
+        self.gmm = gmm
+        cluster_probs = gmm.predict_proba(train_coordinates)
+        cluster_data_indices = {cluster_id: [] for cluster_id in range(NUM_CLUSTERS)}
+
+        for i, probs in enumerate(cluster_probs):
+            assigned_clusters = np.where(probs >= PROB_THRESHOLD)[0]
+            for cluster_id in assigned_clusters:
+                cluster_data_indices[cluster_id].append(i)
+
         self.local_gps = {}
 
         for cluster_id in range(NUM_CLUSTERS):
-            # Extract data points belonging to the current cluster
-            cluster_indices = np.where(cluster_labels == cluster_id)[0]
+            print("CLUSTER " + str(cluster_id))
+            # cluster_indices = np.where(cluster_labels == cluster_id)[0]       # Extract data points belonging to the current cluster
+            cluster_indices = cluster_data_indices[cluster_id]
+
+            if len(cluster_indices) == 0:
+                continue
+
             cluster_X = train_coordinates[cluster_indices]
             cluster_y = train_targets[cluster_indices]
 
-            # Define the kernel function for the GP
-            #kernel = (ConstantKernel(1.0) * DotProduct(sigma_0=1.0) * Matern(length_scale=1.0, nu=1.5) * RBF(length_scale=1.0) + WhiteKernel(noise_level=1.0))
-            kernel = (ConstantKernel(1.0, (1e-3, 1e3)) * DotProduct(sigma_0=1.0, sigma_0_bounds=(1e-3, 1e3)) * Matern(length_scale=1.0, nu=1.5, length_scale_bounds=(1e-2, 1e2)) * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1)))
-            #kernel = (ConstantKernel(1.0, (1e-4, 1e4)) * Matern(length_scale=1.0, nu=1.5, length_scale_bounds=(1e-3, 1e3)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e2)))
+            #kernel = (ConstantKernel(1.0, (1e-3, 1e3)) * DotProduct(sigma_0=1.0, sigma_0_bounds=(1e-3, 1e3)) * Matern(length_scale=1.0, nu=1.5, length_scale_bounds=(1e-2, 1e2)) * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1)))
+            #kernel = (Matern(length_scale=1.0, nu=1.5))
+            kernel = (ConstantKernel(1.0) * Matern(length_scale=1.0) + WhiteKernel(noise_level=1.0))
             
-            # Initialize the GP regressor with the kernel
-            gp = GaussianProcessRegressor(kernel=kernel, optimizer='fmin_l_bfgs_b', n_restarts_optimizer=10, random_state=0)
-
-            # Train the GP model on the cluster data
-            gp.fit(cluster_X, cluster_y)
-
-            # Store the trained GP model in the dictionary
-            self.local_gps[cluster_id] = gp
-
-            print("CLUSTER" + cluster_id + "\n")
+            gp = GaussianProcessRegressor(kernel=kernel, optimizer='fmin_l_bfgs_b', n_restarts_optimizer=10, random_state=0, alpha=1e-10)   # Initialize the GP regressor with the kernel
+            
+            gp.fit(cluster_X, cluster_y)            # Train the GP model on the cluster data
+            
+            self.local_gps[cluster_id] = gp         # Store the trained GP model in the dictionary
+            print("   Done fit\n ========================")
 
         pass
 
