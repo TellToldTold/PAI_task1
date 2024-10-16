@@ -11,27 +11,30 @@ import time
 
 
 # Set `EXTENDED_EVALUATION` to `True` in order to visualize your predictions.
-EXTENDED_EVALUATION = True
-EVALUATION_GRID_POINTS = 1500  # Number of grid points used in extended evaluation
+EXTENDED_EVALUATION = False
+EVALUATION_GRID_POINTS = 900  # Number of grid points used in extended evaluation
 
 # Cost function constants
 COST_W_UNDERPREDICT = 50.0
 COST_W_NORMAL = 1.0
 
+# VARIABLES 
+OVERLAPPING = True
 NUM_CLUSTERS = 30
 N_OPTIMIZER = 3
 ALPHA = 1e-6
 PROB_THRESHOLD = 0.12
 ADJUSTMENT_FACTOR = 1.02
-
-# CDM+W   CR+W   DM+W  
+KERNEL = (ConstantKernel(1.0) * DotProduct(sigma_0=1.0) * Matern(length_scale=1.0, nu=1.6) + WhiteKernel(noise_level=1.0))
+# ALL kernel = (ConstantKernel(1.0, (1e-3, 1e3)) * DotProduct(sigma_0=1.0, sigma_0_bounds=(1e-3, 1e3)) * Matern(length_scale=1.0, nu=1.5, length_scale_bounds=(1e-2, 1e2)) * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1)))
 
 #            CM+W                       (o)CDM+W                   (o)CM+W           
 # 100       4.993                        
 # 70        4.261                        3.924 - 97(2)            
 # 50        4.215                        3.922 - 170(2)
-# 30        4.858                                                   3.746 - 383
-# 25        4.065 - 57(1)
+# 35                                     3.859 - 312(nc=30 no=3 al=-6 pt=0.12 af=1.02)
+# 30        4.858                        3.746 - 383(nc=30 no=3 al=-6 pt=0.12 af=1.02)
+# 25        4.065 - 57(1)                3.867 - 440(nc=30 no=3 al=-6 pt=0.12 af=1.02)
 # 23        4.042                        3.894 - 267(2)
 # 21        4.085 - 103(3)
 # 20        3.935 - 98(2)                3.817 - 311(2)             3.815 - 220
@@ -54,7 +57,6 @@ class Model(object):
         """
         self.rng = np.random.default_rng(seed=0)
 
-        # TODO: Add custom initialization for your model here if necessary
 
     def generate_predictions(self, test_coordinates: np.ndarray, test_area_flags: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -70,64 +72,61 @@ class Model(object):
         gp_std = np.zeros(test_coordinates.shape[0], dtype=float)
         predictions = np.zeros(test_coordinates.shape[0], dtype=float)
 
-        # non overlapping clusters
-        # test_cluster_labels = self.kmeans.predict(test_coordinates)
-        # for cluster_id in range(NUM_CLUSTERS):
-        #     cluster_indices = np.where(test_cluster_labels == cluster_id)[0]        # Indices of test points in this cluster
-        #     cluster_X = test_coordinates[cluster_indices]
+        if not OVERLAPPING: 
+            test_cluster_labels = self.kmeans.predict(test_coordinates)
+            for cluster_id in range(NUM_CLUSTERS):
+                cluster_indices = np.where(test_cluster_labels == cluster_id)[0]        # Indices of test points in this cluster
+                cluster_X = test_coordinates[cluster_indices]
 
-        #     if len(cluster_X) == 0:
-        #         continue  # Skip if no test points in this cluster
+                if len(cluster_X) == 0:
+                    continue  # Skip if no test points in this cluster
 
-        #     gp = self.local_gps[cluster_id]     # Retrieve the trained GP model
-            
-        #     y_mean, y_std = gp.predict(cluster_X, return_std=True)  # Make predictions
+                gp = self.local_gps[cluster_id]     # Retrieve the trained GP model
+                
+                y_mean, y_std = gp.predict(cluster_X, return_std=True)  # Make predictions
 
-        #     gp_mean[cluster_indices] = y_mean
-        #     gp_std[cluster_indices] = y_std
+                gp_mean[cluster_indices] = y_mean
+                gp_std[cluster_indices] = y_std
+        else : 
+            test_probs = self.gmm.predict_proba(test_coordinates)
+            for i in range(test_coordinates.shape[0]):
+                # Find clusters where the test point's probability is above the threshold
+                clusters = np.where(test_probs[i] >= PROB_THRESHOLD)[0]
+                if len(clusters) == 0:
+                    # If no clusters meet the threshold, use the cluster with the highest probability
+                    clusters = [np.argmax(test_probs[i])]
 
+                # Initialize lists to collect predictions from multiple GPs
+                cluster_preds = []
+                cluster_vars = []
 
-        # overlapping clusters    
-        test_probs = self.gmm.predict_proba(test_coordinates)
-        for i in range(test_coordinates.shape[0]):
-            # Find clusters where the test point's probability is above the threshold
-            clusters = np.where(test_probs[i] >= PROB_THRESHOLD)[0]
-            if len(clusters) == 0:
-                # If no clusters meet the threshold, use the cluster with the highest probability
-                clusters = [np.argmax(test_probs[i])]
+                for cluster_id in clusters:
+                    gp = self.local_gps.get(cluster_id)
+                    if gp is None:
+                        continue  # Skip if the GP model is not available
 
-            # Initialize lists to collect predictions from multiple GPs
-            cluster_preds = []
-            cluster_vars = []
+                    # Make prediction using the GP model
+                    y_mean, y_std = gp.predict(test_coordinates[i].reshape(1, -1), return_std=True)
+                    cluster_preds.append(y_mean[0])
+                    cluster_vars.append(y_std[0] ** 2)  # Variance
 
-            for cluster_id in clusters:
-                gp = self.local_gps.get(cluster_id)
-                if gp is None:
-                    continue  # Skip if the GP model is not available
+                if cluster_preds:
+                    # Compute weighted average of predictions
+                    # Optionally, you can weight by the cluster probabilities
+                    weights = test_probs[i][clusters]
+                    weights /= np.sum(weights)  # Normalize weights to sum to 1
 
-                # Make prediction using the GP model
-                y_mean, y_std = gp.predict(test_coordinates[i].reshape(1, -1), return_std=True)
-                cluster_preds.append(y_mean[0])
-                cluster_vars.append(y_std[0] ** 2)  # Variance
-
-            if cluster_preds:
-                # Compute weighted average of predictions
-                # Optionally, you can weight by the cluster probabilities
-                weights = test_probs[i][clusters]
-                weights /= np.sum(weights)  # Normalize weights to sum to 1
-
-                # Weighted mean
-                gp_mean[i] = np.sum(weights * np.array(cluster_preds))
-                # Weighted variance
-                gp_var = np.sum(weights * np.array(cluster_vars)) + np.sum(weights * (np.array(cluster_preds) - gp_mean[i]) ** 2)
-                gp_std[i] = np.sqrt(gp_var)
-            else:
-                # Default prediction if no clusters are found (should not happen)
-                gp_mean[i] = 0.0
-                gp_std[i] = 1.0
+                    # Weighted mean
+                    gp_mean[i] = np.sum(weights * np.array(cluster_preds))
+                    # Weighted variance
+                    gp_var = np.sum(weights * np.array(cluster_vars)) + np.sum(weights * (np.array(cluster_preds) - gp_mean[i]) ** 2)
+                    gp_std[i] = np.sqrt(gp_var)
+                else:
+                    # Default prediction if no clusters are found (should not happen)
+                    gp_mean[i] = 0.0
+                    gp_std[i] = 1.0
 
         # np.savez('arrays.npz', gp_mean=gp_mean, gp_std=gp_std, predictions=predictions)
-
         # data = np.load('arrays.npz')
         # gp_mean = data['gp_mean']
         # gp_std = data['gp_std']
@@ -150,9 +149,9 @@ class Model(object):
         """
 
         # non overlapping clusters
-        # kmeans = KMeans(n_clusters=NUM_CLUSTERS, random_state=0)
-        # cluster_labels = kmeans.fit_predict(train_coordinates)
-        # self.kmeans = kmeans
+        kmeans = KMeans(n_clusters=NUM_CLUSTERS, random_state=0)
+        cluster_labels = kmeans.fit_predict(train_coordinates)
+        self.kmeans = kmeans
 
         # overlapping clusters
         gmm = GaussianMixture(n_components=NUM_CLUSTERS, random_state=0)
@@ -167,24 +166,21 @@ class Model(object):
     
         start_time = time.time()
         self.local_gps = {}
+
         for cluster_id in range(NUM_CLUSTERS):
-            print(" CLUSTER " + str(cluster_id))
             start_cluster_time = time.time()
 
-            # non overlapping clusters
-            #cluster_indices = np.where(cluster_labels == cluster_id)[0]    
-            # overlapping clusters
-            cluster_indices = cluster_data_indices[cluster_id]
+            cluster_indices = cluster_data_indices[cluster_id] if OVERLAPPING else np.where(cluster_labels == cluster_id)[0]    
+            print(f"CLUSTER {cluster_id} : {len(cluster_indices)}")
 
-            # ALL kernel = (ConstantKernel(1.0, (1e-3, 1e3)) * DotProduct(sigma_0=1.0, sigma_0_bounds=(1e-3, 1e3)) * Matern(length_scale=1.0, nu=1.5, length_scale_bounds=(1e-2, 1e2)) * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1)))
-            #kernel = (Matern(length_scale=1.0, nu=1.5))
-            kernel = (ConstantKernel(1.0) * DotProduct(sigma_0=1.0) * Matern(length_scale=1.0, nu=1.5) + WhiteKernel(noise_level=1.0))
-            #kernel = (DotProduct(sigma_0=1.0, sigma_0_bounds=(1e-3, 1e3)) * Matern(length_scale=1.0, nu=1.5, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1)))
+            kernel = KERNEL
 
             gp = GaussianProcessRegressor(kernel=kernel, optimizer='fmin_l_bfgs_b', n_restarts_optimizer=N_OPTIMIZER, random_state=0, alpha=ALPHA)   # Initialize the GP regressor with the kernel
             cluster_X = train_coordinates[cluster_indices]
             cluster_y = train_targets[cluster_indices]
             gp.fit(cluster_X, cluster_y)            # Train the GP model on the cluster data
+            print("     Learned kernel:", gp.kernel_)
+            
             self.local_gps[cluster_id] = gp         # Store the trained GP model in the dictionary
 
             print(f"    Done fit in: {time.time() - start_cluster_time:.1f}\n-----------------------")
@@ -341,7 +337,6 @@ def main():
 
     if EXTENDED_EVALUATION:
         execute_extended_evaluation(model, output_dir='.')
-
 
 if __name__ == "__main__":
     main()
