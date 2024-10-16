@@ -7,17 +7,38 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
+import time
+
 
 # Set `EXTENDED_EVALUATION` to `True` in order to visualize your predictions.
-EXTENDED_EVALUATION = False
-EVALUATION_GRID_POINTS = 300  # Number of grid points used in extended evaluation
+EXTENDED_EVALUATION = True
+EVALUATION_GRID_POINTS = 1500  # Number of grid points used in extended evaluation
 
 # Cost function constants
 COST_W_UNDERPREDICT = 50.0
 COST_W_NORMAL = 1.0
 
-NUM_CLUSTERS = 100
-PROB_THRESHOLD = 0.1
+NUM_CLUSTERS = 30
+N_OPTIMIZER = 3
+ALPHA = 1e-6
+PROB_THRESHOLD = 0.12
+ADJUSTMENT_FACTOR = 1.02
+
+# CDM+W   CR+W   DM+W  
+
+#            CM+W                       (o)CDM+W                   (o)CM+W           
+# 100       4.993                        
+# 70        4.261                        3.924 - 97(2)            
+# 50        4.215                        3.922 - 170(2)
+# 30        4.858                                                   3.746 - 383
+# 25        4.065 - 57(1)
+# 23        4.042                        3.894 - 267(2)
+# 21        4.085 - 103(3)
+# 20        3.935 - 98(2)                3.817 - 311(2)             3.815 - 220
+# 18        4.030 - 133(3)
+# 16        4.160
+# 12        4.076 - 499(10)
+# 4         n/d
 
 class Model(object):
     """
@@ -45,33 +66,29 @@ class Model(object):
             containing your predictions, the GP posterior mean, and the GP posterior stddev (in that order)
         """
 
-        #test_cluster_labels = self.kmeans.predict(test_coordinates)
-        test_probs = self.gmm.predict_proba(test_coordinates)
-
-        # TODO: Use your GP to estimate the posterior mean and stddev for each city_area here
         gp_mean = np.zeros(test_coordinates.shape[0], dtype=float)
         gp_std = np.zeros(test_coordinates.shape[0], dtype=float)
-        # TODO: Use the GP posterior to form your predictions here
         predictions = np.zeros(test_coordinates.shape[0], dtype=float)
 
+        # non overlapping clusters
+        # test_cluster_labels = self.kmeans.predict(test_coordinates)
         # for cluster_id in range(NUM_CLUSTERS):
-        #     # Indices of test points in this cluster
-        #     cluster_indices = np.where(test_cluster_labels == cluster_id)[0]
+        #     cluster_indices = np.where(test_cluster_labels == cluster_id)[0]        # Indices of test points in this cluster
         #     cluster_X = test_coordinates[cluster_indices]
 
         #     if len(cluster_X) == 0:
         #         continue  # Skip if no test points in this cluster
 
-        #     # Retrieve the trained GP model
-        #     gp = self.local_gps[cluster_id]
+        #     gp = self.local_gps[cluster_id]     # Retrieve the trained GP model
+            
+        #     y_mean, y_std = gp.predict(cluster_X, return_std=True)  # Make predictions
 
-        #     # Make predictions
-        #     y_mean, y_std = gp.predict(cluster_X, return_std=True)
-
-        #     # Store predictions
         #     gp_mean[cluster_indices] = y_mean
         #     gp_std[cluster_indices] = y_std
 
+
+        # overlapping clusters    
+        test_probs = self.gmm.predict_proba(test_coordinates)
         for i in range(test_coordinates.shape[0]):
             # Find clusters where the test point's probability is above the threshold
             clusters = np.where(test_probs[i] >= PROB_THRESHOLD)[0]
@@ -109,9 +126,15 @@ class Model(object):
                 gp_mean[i] = 0.0
                 gp_std[i] = 1.0
 
+        # np.savez('arrays.npz', gp_mean=gp_mean, gp_std=gp_std, predictions=predictions)
+
+        # data = np.load('arrays.npz')
+        # gp_mean = data['gp_mean']
+        # gp_std = data['gp_std']
+        # predictions = data['predictions']
 
         predictions = gp_mean.copy()
-        adjustment_factor = 2.0619
+        adjustment_factor = ADJUSTMENT_FACTOR
         residential_indices = np.where(test_area_flags == 1)[0]
         predictions[residential_indices] = gp_mean[residential_indices] + adjustment_factor * gp_std[residential_indices]
         predictions = np.maximum(predictions, 0)
@@ -126,45 +149,47 @@ class Model(object):
         :param train_area_flags: Binary variable denoting whether the 2D training point is in the residential area (1) or not (0)
         """
 
-        #kmeans = KMeans(n_clusters=NUM_CLUSTERS, random_state=0)
-        #cluster_labels = kmeans.fit_predict(train_coordinates)
-        #self.kmeans = kmeans
+        # non overlapping clusters
+        # kmeans = KMeans(n_clusters=NUM_CLUSTERS, random_state=0)
+        # cluster_labels = kmeans.fit_predict(train_coordinates)
+        # self.kmeans = kmeans
 
+        # overlapping clusters
         gmm = GaussianMixture(n_components=NUM_CLUSTERS, random_state=0)
         gmm.fit(train_coordinates)
         self.gmm = gmm
         cluster_probs = gmm.predict_proba(train_coordinates)
         cluster_data_indices = {cluster_id: [] for cluster_id in range(NUM_CLUSTERS)}
-
         for i, probs in enumerate(cluster_probs):
             assigned_clusters = np.where(probs >= PROB_THRESHOLD)[0]
             for cluster_id in assigned_clusters:
                 cluster_data_indices[cluster_id].append(i)
-
+    
+        start_time = time.time()
         self.local_gps = {}
-
         for cluster_id in range(NUM_CLUSTERS):
-            print("CLUSTER " + str(cluster_id))
-            # cluster_indices = np.where(cluster_labels == cluster_id)[0]       # Extract data points belonging to the current cluster
+            print(" CLUSTER " + str(cluster_id))
+            start_cluster_time = time.time()
+
+            # non overlapping clusters
+            #cluster_indices = np.where(cluster_labels == cluster_id)[0]    
+            # overlapping clusters
             cluster_indices = cluster_data_indices[cluster_id]
 
-            if len(cluster_indices) == 0:
-                continue
+            # ALL kernel = (ConstantKernel(1.0, (1e-3, 1e3)) * DotProduct(sigma_0=1.0, sigma_0_bounds=(1e-3, 1e3)) * Matern(length_scale=1.0, nu=1.5, length_scale_bounds=(1e-2, 1e2)) * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1)))
+            #kernel = (Matern(length_scale=1.0, nu=1.5))
+            kernel = (ConstantKernel(1.0) * DotProduct(sigma_0=1.0) * Matern(length_scale=1.0, nu=1.5) + WhiteKernel(noise_level=1.0))
+            #kernel = (DotProduct(sigma_0=1.0, sigma_0_bounds=(1e-3, 1e3)) * Matern(length_scale=1.0, nu=1.5, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1)))
 
+            gp = GaussianProcessRegressor(kernel=kernel, optimizer='fmin_l_bfgs_b', n_restarts_optimizer=N_OPTIMIZER, random_state=0, alpha=ALPHA)   # Initialize the GP regressor with the kernel
             cluster_X = train_coordinates[cluster_indices]
             cluster_y = train_targets[cluster_indices]
-
-            #kernel = (ConstantKernel(1.0, (1e-3, 1e3)) * DotProduct(sigma_0=1.0, sigma_0_bounds=(1e-3, 1e3)) * Matern(length_scale=1.0, nu=1.5, length_scale_bounds=(1e-2, 1e2)) * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1)))
-            #kernel = (Matern(length_scale=1.0, nu=1.5))
-            kernel = (ConstantKernel(1.0) * Matern(length_scale=1.0) + WhiteKernel(noise_level=1.0))
-            
-            gp = GaussianProcessRegressor(kernel=kernel, optimizer='fmin_l_bfgs_b', n_restarts_optimizer=10, random_state=0, alpha=1e-10)   # Initialize the GP regressor with the kernel
-            
             gp.fit(cluster_X, cluster_y)            # Train the GP model on the cluster data
-            
             self.local_gps[cluster_id] = gp         # Store the trained GP model in the dictionary
-            print("   Done fit\n ========================")
 
+            print(f"    Done fit in: {time.time() - start_cluster_time:.1f}\n-----------------------")
+
+        print(f"Total seconds: {time.time() - start_time:.1f}")
         pass
 
 # You don't have to change this function
