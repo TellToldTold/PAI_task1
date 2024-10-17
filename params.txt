@@ -1,0 +1,2 @@
+n_clusters=30
+prob_th=0.124

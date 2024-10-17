@@ -8,7 +8,7 @@ from matplotlib import cm
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 import time
-
+from colorama import Fore, init
 
 # Set `EXTENDED_EVALUATION` to `True` in order to visualize your predictions.
 EXTENDED_EVALUATION = False
@@ -23,9 +23,9 @@ OVERLAPPING = True
 NUM_CLUSTERS = 30
 N_OPTIMIZER = 3
 ALPHA = 1e-6
-PROB_THRESHOLD = 0.12
+PROB_THRESHOLD = 0.1195
 ADJUSTMENT_FACTOR = 1.02
-KERNEL = (ConstantKernel(1.0) * DotProduct(sigma_0=1.0) * Matern(length_scale=1.0, nu=1.6) + WhiteKernel(noise_level=1.0))
+KERNEL = (ConstantKernel(1.0) * DotProduct(sigma_0=1.0) * Matern(length_scale=1.0, nu=1.5) + WhiteKernel(noise_level=1.0))
 # ALL kernel = (ConstantKernel(1.0, (1e-3, 1e3)) * DotProduct(sigma_0=1.0, sigma_0_bounds=(1e-3, 1e3)) * Matern(length_scale=1.0, nu=1.5, length_scale_bounds=(1e-2, 1e2)) * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1)))
 
 #            CM+W                       (o)CDM+W                   (o)CM+W           
@@ -56,6 +56,17 @@ class Model(object):
         We already provide a random number generator for reproducibility.
         """
         self.rng = np.random.default_rng(seed=0)
+        params = {}
+        with open('./params.txt', 'r') as f:
+            for line in f:
+                key, value = line.strip().split('=')
+                params[key] = value
+
+        self.num_clusters = int(params['n_clusters'])
+        self.prob_threshold = float(params['prob_th'])
+        init(autoreset=True, strip=False)
+        # self.num_clusters = NUM_CLUSTERS
+        # self.prob_threshold = PROB_THRESHOLD
 
 
     def generate_predictions(self, test_coordinates: np.ndarray, test_area_flags: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -74,7 +85,7 @@ class Model(object):
 
         if not OVERLAPPING: 
             test_cluster_labels = self.kmeans.predict(test_coordinates)
-            for cluster_id in range(NUM_CLUSTERS):
+            for cluster_id in range(self.num_clusters):
                 cluster_indices = np.where(test_cluster_labels == cluster_id)[0]        # Indices of test points in this cluster
                 cluster_X = test_coordinates[cluster_indices]
 
@@ -91,7 +102,7 @@ class Model(object):
             test_probs = self.gmm.predict_proba(test_coordinates)
             for i in range(test_coordinates.shape[0]):
                 # Find clusters where the test point's probability is above the threshold
-                clusters = np.where(test_probs[i] >= PROB_THRESHOLD)[0]
+                clusters = np.where(test_probs[i] >= self.prob_threshold)[0]
                 if len(clusters) == 0:
                     # If no clusters meet the threshold, use the cluster with the highest probability
                     clusters = [np.argmax(test_probs[i])]
@@ -149,29 +160,31 @@ class Model(object):
         """
 
         # non overlapping clusters
-        kmeans = KMeans(n_clusters=NUM_CLUSTERS, random_state=0)
+        kmeans = KMeans(n_clusters=self.num_clusters, random_state=0)
         cluster_labels = kmeans.fit_predict(train_coordinates)
         self.kmeans = kmeans
 
         # overlapping clusters
-        gmm = GaussianMixture(n_components=NUM_CLUSTERS, random_state=0)
+        gmm = GaussianMixture(n_components=self.num_clusters, random_state=0)
         gmm.fit(train_coordinates)
         self.gmm = gmm
         cluster_probs = gmm.predict_proba(train_coordinates)
-        cluster_data_indices = {cluster_id: [] for cluster_id in range(NUM_CLUSTERS)}
+        cluster_data_indices = {cluster_id: [] for cluster_id in range(self.num_clusters)}
         for i, probs in enumerate(cluster_probs):
-            assigned_clusters = np.where(probs >= PROB_THRESHOLD)[0]
+            assigned_clusters = np.where(probs >= self.prob_threshold)[0]
             for cluster_id in assigned_clusters:
                 cluster_data_indices[cluster_id].append(i)
     
         start_time = time.time()
         self.local_gps = {}
 
-        for cluster_id in range(NUM_CLUSTERS):
+        print(Fore.BLUE + f"\nStarting NC: {self.num_clusters} PT:{self.prob_threshold} : ", end='')
+        for cluster_id in range(self.num_clusters):
             start_cluster_time = time.time()
+            print(f" C_{cluster_id} ", end='')
 
             cluster_indices = cluster_data_indices[cluster_id] if OVERLAPPING else np.where(cluster_labels == cluster_id)[0]    
-            print(f"CLUSTER {cluster_id} : {len(cluster_indices)}")
+            #print(f"CLUSTER {cluster_id} : {len(cluster_indices)}")
 
             kernel = KERNEL
 
@@ -179,13 +192,17 @@ class Model(object):
             cluster_X = train_coordinates[cluster_indices]
             cluster_y = train_targets[cluster_indices]
             gp.fit(cluster_X, cluster_y)            # Train the GP model on the cluster data
-            print("     Learned kernel:", gp.kernel_)
+            #print("     Learned kernel:", gp.kernel_)
             
             self.local_gps[cluster_id] = gp         # Store the trained GP model in the dictionary
 
-            print(f"    Done fit in: {time.time() - start_cluster_time:.1f}\n-----------------------")
+            print(f"{time.time() - start_cluster_time:.1f} |", end='')
+            #print(f"    Done fit in: {time.time() - start_cluster_time:.1f}\n-----------------------")
 
-        print(f"Total seconds: {time.time() - start_time:.1f}")
+        print("\n\n==================================================================================\n")
+        print(Fore.RED + f"     N_CLUSTERS: {self.num_clusters}         PROB_THRESHOLD: {self.prob_threshold}        Time: {time.time() - start_time:.1f}")
+        print("\n==================================================================================\n")
+
         pass
 
 # You don't have to change this function
