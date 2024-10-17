@@ -21,11 +21,15 @@ COST_W_NORMAL = 1.0
 # VARIABLES 
 OVERLAPPING = True
 NUM_CLUSTERS = 30
-N_OPTIMIZER = 3
+PROB_THRESHOLD = 0.12
+N_OPTIMIZER = 3 
 ALPHA = 1e-6
-PROB_THRESHOLD = 0.1195
 ADJUSTMENT_FACTOR = 1.02
-KERNEL = (ConstantKernel(1.0) * DotProduct(sigma_0=1.0) * Matern(length_scale=1.0, nu=1.5) + WhiteKernel(noise_level=1.0))
+KERNELS = [(ConstantKernel(1.0) * DotProduct(sigma_0=1.0) * Matern(length_scale=1.0, nu=1.5) + WhiteKernel(noise_level=1.0)),
+           (ConstantKernel(1.0) * (RBF(length_scale=1.0) + Matern(length_scale=1.0, nu=1.5)) + WhiteKernel(noise_level=1.0)),
+           (ConstantKernel(1.0) * DotProduct(sigma_0=1.0) * (RBF(length_scale=1.0) + Matern(length_scale=1.0, nu=1.5)) + WhiteKernel(noise_level=1.0)),
+           (ConstantKernel(1.0) * (DotProduct(sigma_0=1.0) + RBF(length_scale=1.0) + Matern(length_scale=1.0, nu=1.5)) + WhiteKernel(noise_level=1.0)),
+           (WhiteKernel(noise_level=1.0))]
 # ALL kernel = (ConstantKernel(1.0, (1e-3, 1e3)) * DotProduct(sigma_0=1.0, sigma_0_bounds=(1e-3, 1e3)) * Matern(length_scale=1.0, nu=1.5, length_scale_bounds=(1e-2, 1e2)) * RBF(length_scale=1.0, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1.0, noise_level_bounds=(1e-5, 1e1)))
 
 #            CM+W                       (o)CDM+W                   (o)CM+W           
@@ -56,17 +60,36 @@ class Model(object):
         We already provide a random number generator for reproducibility.
         """
         self.rng = np.random.default_rng(seed=0)
-        params = {}
-        with open('./params.txt', 'r') as f:
-            for line in f:
-                key, value = line.strip().split('=')
-                params[key] = value
-
-        self.num_clusters = int(params['n_clusters'])
-        self.prob_threshold = float(params['prob_th'])
         init(autoreset=True, strip=False)
-        # self.num_clusters = NUM_CLUSTERS
-        # self.prob_threshold = PROB_THRESHOLD
+        params = {}
+
+        try:
+            with open('./params.txt', 'r') as f:
+                for line in f:
+                    key, value = line.strip().split('=')
+                    params[key] = value
+        except:
+            print(Fore.CYAN + "params.txt not found")
+
+        self.kernel = KERNELS[0]
+        self.num_clusters = NUM_CLUSTERS
+        self.prob_threshold = PROB_THRESHOLD
+        self.n_optimizer = N_OPTIMIZER
+        self.alpha = ALPHA
+
+        if params.get('kernel', '') != '':
+             self.kernel = KERNELS[int(params['kernel'])]
+
+        if params.get('n_clusters', '') != '':
+            self.num_clusters = int(params['n_clusters'])
+        
+        if params.get('prob_th', '') != '':
+            self.prob_threshold = float(params['prob_th'])
+
+        print(self.kernel)
+        #self.n_optimizer = int(params['n_clusters'])
+        #self.alpha = float(params['n_clusters'])
+
 
 
     def generate_predictions(self, test_coordinates: np.ndarray, test_area_flags: np.ndarray) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -147,7 +170,6 @@ class Model(object):
         adjustment_factor = ADJUSTMENT_FACTOR
         residential_indices = np.where(test_area_flags == 1)[0]
         predictions[residential_indices] = gp_mean[residential_indices] + adjustment_factor * gp_std[residential_indices]
-        predictions = np.maximum(predictions, 0)
 
         return predictions, gp_mean, gp_std
 
@@ -177,31 +199,40 @@ class Model(object):
     
         start_time = time.time()
         self.local_gps = {}
+        numeric_params = {}
 
-        print(Fore.BLUE + f"\nStarting NC: {self.num_clusters} PT:{self.prob_threshold} : ", end='')
+        print(Fore.BLUE + f"\nStarting NC: {self.num_clusters} PT: {self.prob_threshold} : ", end='')
         for cluster_id in range(self.num_clusters):
             start_cluster_time = time.time()
             print(f" C_{cluster_id} ", end='')
 
             cluster_indices = cluster_data_indices[cluster_id] if OVERLAPPING else np.where(cluster_labels == cluster_id)[0]    
-            #print(f"CLUSTER {cluster_id} : {len(cluster_indices)}")
 
-            kernel = KERNEL
-
-            gp = GaussianProcessRegressor(kernel=kernel, optimizer='fmin_l_bfgs_b', n_restarts_optimizer=N_OPTIMIZER, random_state=0, alpha=ALPHA)   # Initialize the GP regressor with the kernel
+            gp = GaussianProcessRegressor(kernel=self.kernel, optimizer='fmin_l_bfgs_b', n_restarts_optimizer=self.n_optimizer, random_state=0, alpha=self.alpha)   # Initialize the GP regressor with the kernel
+            
             cluster_X = train_coordinates[cluster_indices]
             cluster_y = train_targets[cluster_indices]
-            gp.fit(cluster_X, cluster_y)            # Train the GP model on the cluster data
-            #print("     Learned kernel:", gp.kernel_)
-            
-            self.local_gps[cluster_id] = gp         # Store the trained GP model in the dictionary
+            gp.fit(cluster_X, cluster_y)            
+            self.local_gps[cluster_id] = gp         
 
             print(f"{time.time() - start_cluster_time:.1f} |", end='')
-            #print(f"    Done fit in: {time.time() - start_cluster_time:.1f}\n-----------------------")
+
+            hyperparams = gp.kernel_.get_params()
+            for key, value in hyperparams.items():
+                if isinstance(value, (int, float)):
+                    if key not in numeric_params:
+                        numeric_params[key] = []
+                    numeric_params[key].append(value)
 
         print("\n\n==================================================================================\n")
+
         print(Fore.RED + f"     N_CLUSTERS: {self.num_clusters}         PROB_THRESHOLD: {self.prob_threshold}        Time: {time.time() - start_time:.1f}")
-        print("\n==================================================================================\n")
+
+        print(f"\n     {self.kernel}   || ", end='')
+        for key, list in numeric_params.items():
+            print(f" {key.split('__')[-1]}  {np.mean(list):.3f}  {np.std(list):.3f}  | ", end='')
+
+        print("\n\n==================================================================================\n")
 
         pass
 

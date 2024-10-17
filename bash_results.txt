@@ -1,58 +1,202 @@
 n_clusters:    p_threshold:  beat   -->    cost: beat
 Cost not found for parameters:  
-n_clusters: 35   p_threshold: 0.125 3.866   -->    cost: 3.866
-n_clusters: 35   p_threshold: 0.124 3.861   -->    cost: 3.861
-n_clusters: 35   p_threshold: 0.123 3.868   -->    cost: 3.868
-n_clusters: 35   p_threshold: 0.122 3.859   -->    cost: 3.859
-n_clusters: 35   p_threshold: 0.121 3.860   -->    cost: 3.860
-n_clusters: 35   p_threshold: 0.12 3.856   -->    cost: 3.856
-n_clusters: 35   p_threshold: 0.119 3.863   -->    cost: 3.863
-n_clusters: 35   p_threshold: 0.118 3.859   -->    cost: 3.859
-n_clusters: 35   p_threshold: 0.117 3.868   -->    cost: 3.868
-n_clusters: 35   p_threshold: 0.116 3.868   -->    cost: 3.868
-n_clusters: 35   p_threshold: 0.115 3.861   -->    cost: 3.861
-n_clusters: 34   p_threshold: 0.125 3.877   -->    cost: 3.877
-n_clusters: 34   p_threshold: 0.124 3.891   -->    cost: 3.891
-n_clusters: 34   p_threshold: 0.123 3.899   -->    cost: 3.899
-n_clusters: 34   p_threshold: 0.122 3.891   -->    cost: 3.891
-n_clusters: 34   p_threshold: 0.121 3.839   -->    cost: 3.839
-n_clusters: 34   p_threshold: 0.12 3.835   -->    cost: 3.835
-n_clusters: 34   p_threshold: 0.119 3.837   -->    cost: 3.837
-n_clusters: 34   p_threshold: 0.118 3.843   -->    cost: 3.843
-n_clusters: 34   p_threshold: 0.117 3.831   -->    cost: 3.831
-n_clusters: 34   p_threshold: 0.116 3.831   -->    cost: 3.831
-n_clusters: 34   p_threshold: 0.115 3.832   -->    cost: 3.832
-n_clusters: 33   p_threshold: 0.125 3.816   -->    cost: 3.816
-n_clusters: 33   p_threshold: 0.124 3.817   -->    cost: 3.817
-n_clusters: 33   p_threshold: 0.123 3.824   -->    cost: 3.824
-n_clusters: 33   p_threshold: 0.122 3.829   -->    cost: 3.829
-n_clusters: 33   p_threshold: 0.121 3.817   -->    cost: 3.817
-n_clusters: 33   p_threshold: 0.12 3.833   -->    cost: 3.833
-n_clusters: 33   p_threshold: 0.119 3.828   -->    cost: 3.828
-n_clusters: 33   p_threshold: 0.118 3.824   -->    cost: 3.824
-n_clusters: 33   p_threshold: 0.117 3.820   -->    cost: 3.820
-n_clusters: 33   p_threshold: 0.116 3.826   -->    cost: 3.826
-n_clusters: 33   p_threshold: 0.115 3.824   -->    cost: 3.824
-n_clusters: 32   p_threshold: 0.125 3.837   -->    cost: 3.837
-n_clusters: 32   p_threshold: 0.124 3.839   -->    cost: 3.839
-n_clusters: 32   p_threshold: 0.123 3.830   -->    cost: 3.830
-n_clusters: 32   p_threshold: 0.122 3.817   -->    cost: 3.817
-n_clusters: 32   p_threshold: 0.121 3.821   -->    cost: 3.821
-n_clusters: 32   p_threshold: 0.12 3.824   -->    cost: 3.824
-n_clusters: 32   p_threshold: 0.119 3.822   -->    cost: 3.822
-n_clusters: 32   p_threshold: 0.118 3.833   -->    cost: 3.833
-n_clusters: 32   p_threshold: 0.117 3.843   -->    cost: 3.843
-n_clusters: 32   p_threshold: 0.116 3.828   -->    cost: 3.828
-n_clusters: 32   p_threshold: 0.115 3.831   -->    cost: 3.831
-n_clusters: 31   p_threshold: 0.125 3.833   -->    cost: 3.833
-n_clusters: 31   p_threshold: 0.124 3.833   -->    cost: 3.833
-n_clusters: 31   p_threshold: 0.123 3.838   -->    cost: 3.838
-n_clusters: 31   p_threshold: 0.122 3.834   -->    cost: 3.834
-n_clusters: 31   p_threshold: 0.121 3.834   -->    cost: 3.834
-n_clusters: 31   p_threshold: 0.12 3.839   -->    cost: 3.839
-n_clusters: 31   p_threshold: 0.119 3.838   -->    cost: 3.838
-n_clusters: 31   p_threshold: 0.118 3.845   -->    cost: 3.845
-n_clusters: 31   p_threshold: 0.117 3.834   -->    cost: 3.834
-n_clusters: 31   p_threshold: 0.116 3.835   -->    cost: 3.835
-n_clusters: 31   p_threshold: 0.115 3.834   -->    cost: 3.834
+n_clusters: 35   p_threshold: 0.125   -->    cost: 3.866
+n_clusters: 35   p_threshold: 0.124   -->    cost: 3.861
+n_clusters: 35   p_threshold: 0.123   -->    cost: 3.868
+n_clusters: 35   p_threshold: 0.122   -->    cost: 3.859
+n_clusters: 35   p_threshold: 0.121   -->    cost: 3.860
+n_clusters: 35   p_threshold: 0.12   -->    cost: 3.856
+n_clusters: 35   p_threshold: 0.119   -->    cost: 3.863
+n_clusters: 35   p_threshold: 0.118   -->    cost: 3.859
+n_clusters: 35   p_threshold: 0.117   -->    cost: 3.868
+n_clusters: 35   p_threshold: 0.116   -->    cost: 3.868
+n_clusters: 35   p_threshold: 0.115   -->    cost: 3.861
+n_clusters: 34   p_threshold: 0.125   -->    cost: 3.877
+n_clusters: 34   p_threshold: 0.124   -->    cost: 3.891
+n_clusters: 34   p_threshold: 0.123   -->    cost: 3.899
+n_clusters: 34   p_threshold: 0.122   -->    cost: 3.891
+n_clusters: 34   p_threshold: 0.121   -->    cost: 3.839
+n_clusters: 34   p_threshold: 0.12   -->    cost: 3.835
+n_clusters: 34   p_threshold: 0.119   -->    cost: 3.837
+n_clusters: 34   p_threshold: 0.118   -->    cost: 3.843
+n_clusters: 34   p_threshold: 0.117   -->    cost: 3.831
+n_clusters: 34   p_threshold: 0.116   -->    cost: 3.831
+n_clusters: 34   p_threshold: 0.115   -->    cost: 3.832
+n_clusters: 33   p_threshold: 0.125   -->    cost: 3.816
+n_clusters: 33   p_threshold: 0.124   -->    cost: 3.817
+n_clusters: 33   p_threshold: 0.123   -->    cost: 3.824
+n_clusters: 33   p_threshold: 0.122   -->    cost: 3.829
+n_clusters: 33   p_threshold: 0.121   -->    cost: 3.817
+n_clusters: 33   p_threshold: 0.12   -->    cost: 3.833
+n_clusters: 33   p_threshold: 0.119   -->    cost: 3.828
+n_clusters: 33   p_threshold: 0.118   -->    cost: 3.824
+n_clusters: 33   p_threshold: 0.117   -->    cost: 3.820
+n_clusters: 33   p_threshold: 0.116   -->    cost: 3.826
+n_clusters: 33   p_threshold: 0.115   -->    cost: 3.824
+n_clusters: 32   p_threshold: 0.125   -->    cost: 3.837
+n_clusters: 32   p_threshold: 0.124   -->    cost: 3.839
+n_clusters: 32   p_threshold: 0.123   -->    cost: 3.830
+n_clusters: 32   p_threshold: 0.122   -->    cost: 3.817
+n_clusters: 32   p_threshold: 0.121   -->    cost: 3.821
+n_clusters: 32   p_threshold: 0.12   -->    cost: 3.824
+n_clusters: 32   p_threshold: 0.119   -->    cost: 3.822
+n_clusters: 32   p_threshold: 0.118   -->    cost: 3.833
+n_clusters: 32   p_threshold: 0.117   -->    cost: 3.843
+n_clusters: 32   p_threshold: 0.116   -->    cost: 3.828
+n_clusters: 32   p_threshold: 0.115   -->    cost: 3.831
+n_clusters: 31   p_threshold: 0.125   -->    cost: 3.833
+n_clusters: 31   p_threshold: 0.124   -->    cost: 3.833
+n_clusters: 31   p_threshold: 0.123   -->    cost: 3.838
+n_clusters: 31   p_threshold: 0.122   -->    cost: 3.834
+n_clusters: 31   p_threshold: 0.121   -->    cost: 3.834
+n_clusters: 31   p_threshold: 0.12   -->    cost: 3.839
+n_clusters: 31   p_threshold: 0.119   -->    cost: 3.838
+n_clusters: 31   p_threshold: 0.118   -->    cost: 3.845
+n_clusters: 31   p_threshold: 0.117   -->    cost: 3.834
+n_clusters: 31   p_threshold: 0.116   -->    cost: 3.835
+n_clusters: 31   p_threshold: 0.115   -->    cost: 3.834
+n_clusters: 30   p_threshold: 0.125   -->    cost: 3.823
+n_clusters: 30   p_threshold: 0.124   -->    cost: 3.824
+n_clusters: 30   p_threshold: 0.123   -->    cost: 3.821
+n_clusters: 30   p_threshold: 0.122   -->    cost: 3.817
+n_clusters: 30   p_threshold: 0.121   -->    cost: 3.815
+n_clusters: 30   p_threshold: 0.12   -->    cost: 3.746
+n_clusters: 30   p_threshold: 0.119   -->    cost: 3.749
+n_clusters: 30   p_threshold: 0.118   -->    cost: 3.808
+n_clusters: 30   p_threshold: 0.117   -->    cost: 3.747
+n_clusters: 30   p_threshold: 0.116   -->    cost: 3.807
+n_clusters: 30   p_threshold: 0.115   -->    cost: 3.854
+n_clusters: 29   p_threshold: 0.125   -->    cost: 3.815
+n_clusters: 29   p_threshold: 0.124   -->    cost: 3.817
+n_clusters: 29   p_threshold: 0.123   -->    cost: 3.807
+n_clusters: 29   p_threshold: 0.122   -->    cost: 3.808
+n_clusters: 29   p_threshold: 0.121   -->    cost: 3.810Cost not found for parameters: 30 0.125
+Cost not found for parameters: 30 0.124
+Cost not found for parameters: 30 0.123
+Cost not found for parameters: 30 0.122
+Cost not found for parameters: 30 0.121
+Cost not found for parameters: 30 0.12
+Cost not found for parameters: 30 0.119
 Cost not found for parameters: 30 0.125
+Cost not found for parameters: 30 0.124
+Cost not found for parameters: 30 0.123
+Cost not found for parameters: 30 0.122
+Cost not found for parameters: 30 0.121
+Cost not found for parameters: 30 0.12
+Cost not found for parameters: 30 0.119
+Cost not found for parameters: 30 0.118
+Cost not found for parameters: 30 0.117
+Cost not found for parameters: 30 0.116
+Cost not found for parameters: 30 0.115
+Cost not found for parameters: 29 0.125
+Cost not found for parameters: 29 0.124
+Cost not found for parameters: 29 0.123
+Cost not found for parameters: 29 0.122
+Cost not found for parameters: 29 0.121
+Cost not found for parameters: 29 0.12
+Cost not found for parameters: 29 0.119
+Cost not found for parameters: 29 0.118
+Cost not found for parameters: 29 0.117
+Cost not found for parameters: 29 0.116
+Cost not found for parameters: 29 0.115
+Cost not found for parameters: 30 0.125
+Cost not found for parameters: 30 0.124
+Cost not found for parameters: 30 0.123
+Cost not found for parameters: 30 0.125
+Cost not found for parameters: 30 0.124
+Cost not found for parameters: 30 0.123
+Cost not found for parameters: 30 0.122
+Cost not found for parameters: 30 0.121
+Cost not found for parameters: 30 0.12
+Cost not found for parameters: 30 0.119
+Cost not found for parameters: 30 0.118
+Cost not found for parameters: 30 0.117
+Cost not found for parameters: 30 0.116
+Cost not found for parameters: 30 0.115
+Cost not found for parameters: 29 0.125
+Cost not found for parameters: 29 0.124
+Cost not found for parameters: 29 0.123
+Cost not found for parameters: 29 0.122
+Cost not found for parameters: 29 0.121
+Cost not found for parameters: 29 0.12
+Cost not found for parameters: 29 0.119
+Cost not found for parameters: 29 0.118
+Cost not found for parameters: 29 0.117
+Cost not found for parameters: 29 0.116
+Cost not found for parameters: 29 0.115
+Cost not found for parameters: 28 0.125
+Cost not found for parameters: 28 0.124
+Cost not found for parameters: 28 0.123
+Cost not found for parameters: 28 0.122
+Cost not found for parameters: 28 0.121
+Cost not found for parameters: 28 0.12
+Cost not found for parameters: 28 0.119
+Cost not found for parameters: 28 0.118
+Cost not found for parameters: 28 0.117
+Cost not found for parameters: 28 0.116
+Cost not found for parameters: 28 0.115
+Cost not found for parameters: 27 0.125
+Cost not found for parameters: 27 0.124
+Cost not found for parameters: 27 0.123
+Cost not found for parameters: 27 0.122
+Cost not found for parameters: 27 0.121
+Cost not found for parameters: 27 0.12
+Cost not found for parameters: 27 0.119
+Cost not found for parameters: 27 0.118
+Cost not found for parameters: 27 0.117
+Cost not found for parameters: 27 0.116
+Cost not found for parameters: 27 0.115
+Cost not found for parameters: 26 0.125
+Cost not found for parameters: 26 0.124
+Cost not found for parameters: 26 0.123
+Cost not found for parameters: 26 0.122
+Cost not found for parameters: 26 0.121
+Cost not found for parameters: 26 0.12
+Cost not found for parameters: 26 0.119
+Cost not found for parameters: 26 0.118
+Cost not found for parameters: 26 0.117
+Cost not found for parameters: 26 0.116
+Cost not found for parameters: 26 0.115
+Cost not found for parameters: 25 0.125
+Cost not found for parameters: 25 0.124
+Cost not found for parameters: 30 0.125
+Cost not found for parameters: 30 0.124
+Cost not found for parameters: 30 0.123
+Cost not found for parameters: 30 0.122
+Cost not found for parameters: 30 0.121
+Cost not found for parameters: 30 0.12
+Cost not found for parameters: 30 0.119
+Cost not found for parameters: 30 0.118
+Cost not found for parameters: 30 0.117
+Cost not found for parameters: 30 0.116
+Cost not found for parameters: 30 0.115
+Cost not found for parameters: 29 0.125
+Cost not found for parameters: 29 0.124
+Cost not found for parameters: 29 0.123
+Cost not found for parameters: 29 0.122
+Cost not found for parameters: 29 0.121
+Cost not found for parameters: 30 0.125
+Cost not found for parameters: 30 0.124
+Cost not found for parameters: 30 0.123
+Cost not found for parameters: 30 0.125
+Cost not found for parameters: 30 0.124
+Cost not found for parameters: 30 0.123
+Cost not found for parameters: 30 0.122
+Cost not found for parameters: 30 0.121
+Cost not found for parameters: 30 0.12
+Cost not found for parameters: 30 0.119
+Cost not found for parameters: 30 0.118
+Cost not found for parameters: 30 0.125
+Cost not found for parameters: 30 0.125
+Cost not found for parameters: 30 0.125
+Cost not found for parameters: 30 0.125
+Cost not found for parameters: 30 0.125
+Cost not found for parameters: 30 0.125
+Cost not found for parameters: 10 0.9
+Cost not found for parameters: 10 0.9
+n_clusters: 10   p_threshold: 0.9   -->    cost: 1065.054
+n_clusters: 10   p_threshold: 0.9   -->    cost: 1065.054
+Cost not found for parameters: 35 0.125
+n_clusters: 35   p_threshold: 0.125   -->    cost: 3.894
+n_clusters: 35   p_threshold: 0.124   -->    cost: 4.157
+Cost not found for parameters: 35 0.123
